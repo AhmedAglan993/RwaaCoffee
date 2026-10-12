@@ -199,6 +199,7 @@ function listenBeans() {
       beanTypes = Array.isArray(t) ? t : [];
       renderBeanSelects();
       renderBeanTypes();
+      renderMsgFilter();
     },
     (err) => {
       console.error(err);
@@ -224,6 +225,9 @@ function onDataChanged() {
   $$("[data-count]").forEach((b) => (b.textContent = customers.size));
   renderBeanTypes();
   renderList();
+  selected.forEach((id) => !customers.has(id) && selected.delete(id));
+  renderMsgFilter();
+  renderMsgList();
   checkAddDuplicate();
   if (!$("#modal").hidden && currentId) {
     const c = customers.get(currentId);
@@ -595,6 +599,153 @@ $("#confirmYes").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
   }
+});
+
+/* ---------------------------------------------------------
+   الرسائل (إرسال موجَّه عبر واتساب بدون API)
+   - نص الرسالة وحالة "تم الإرسال" تُحفظ على هذا الجهاز
+--------------------------------------------------------- */
+const MSG_KEY = "rwaa_msg_template";
+const SENT_KEY = "rwaa_msg_sent";
+const DEFAULT_MSG = "أهلاً {الاسم} 👋\nمعك بن رواق - أصل المحوج ☕\n";
+
+const selected = new Set();
+const msgText = $("#msgText");
+msgText.value = localStorage.getItem(MSG_KEY) ?? DEFAULT_MSG;
+
+const currentTemplate = () => msgText.value.trim();
+
+function buildMessage(c) {
+  return currentTemplate().replace(/\{الاسم\}/g, c.name).replace(/\{البن\}/g, c.beans);
+}
+
+/** حالة الإرسال مرتبطة بنص الرسالة: لو تغيّر النص تبدأ حملة جديدة */
+function getSent() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SENT_KEY) || "null");
+    if (s && s.msg === currentTemplate() && Array.isArray(s.ids)) return new Set(s.ids);
+  } catch { /* تجاهل */ }
+  return new Set();
+}
+function markSent(id) {
+  const ids = getSent();
+  ids.add(id);
+  localStorage.setItem(SENT_KEY, JSON.stringify({ msg: currentTemplate(), ids: [...ids] }));
+}
+
+function renderMsgFilter() {
+  const sel = $("#msgBeanFilter");
+  const prev = sel.value;
+  const keys = new Map();
+  beanTypes.forEach((b) => keys.set(beanKey(b), b));
+  customers.forEach((c) => c.beans && !keys.has(beanKey(c.beans)) && keys.set(beanKey(c.beans), c.beans));
+  sel.innerHTML =
+    `<option value="">كل أنواع البن</option>` +
+    [...keys].map(([k, b]) => `<option value="${esc(k)}">${esc(b)}</option>`).join("");
+  sel.value = keys.has(prev) ? prev : "";
+}
+
+function visibleForMessages() {
+  const bean = $("#msgBeanFilter").value;
+  const q = cleanText($("#msgSearch").value);
+  return [...customers.values()].filter((c) => (!bean || beanKey(c.beans) === bean) && matches(c, q));
+}
+
+function renderMsgList() {
+  const list = visibleForMessages();
+  const sent = getSent();
+
+  $("#msgEmpty").hidden = list.length > 0;
+  $("#msgList").innerHTML = list.map((c) => `
+    <div class="msg-row ${selected.has(c.id) ? "is-selected" : ""}" data-id="${esc(c.id)}">
+      <label class="msg-check">
+        <input type="checkbox" data-sel ${selected.has(c.id) ? "checked" : ""}>
+        <span class="msg-who">
+          <strong>${esc(c.name)}</strong>
+          <small><span dir="ltr">${esc(c.phone)}</span> · ☕ ${esc(c.beans)}</small>
+        </span>
+      </label>
+      ${sent.has(c.id) ? `<span class="sent-tag">تم الإرسال ✓</span>` : ""}
+      <button type="button" class="btn btn-whatsapp btn-sm" data-send>${sent.has(c.id) ? "إعادة" : "إرسال"}</button>
+    </div>`).join("");
+
+  const pending = [...selected].filter((id) => !sent.has(id)).length;
+  $("#msgSelCount").textContent = selected.size ? `المحدد: ${selected.size}` : "";
+  const next = $("#msgSendNext");
+  next.textContent = selected.size
+    ? pending ? `إرسال للتالي (المتبقي ${pending})` : "تم الإرسال للجميع ✓"
+    : "حدّد العملاء أولاً";
+  next.disabled = !pending;
+
+  // معاينة
+  const sample = customers.get([...selected][0]) || list[0];
+  const box = $("#msgPreview");
+  box.hidden = !(sample && currentTemplate());
+  if (!box.hidden) $("#msgPreviewText").textContent = buildMessage(sample);
+}
+
+function sendTo(id) {
+  const c = customers.get(id);
+  if (!c) return;
+  if (!currentTemplate()) {
+    toast("اكتب نص الرسالة أولاً", "err");
+    msgText.focus();
+    return;
+  }
+  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(buildMessage(c))}`, "_blank", "noopener");
+  markSent(id);
+  renderMsgList();
+}
+
+msgText.addEventListener("input", () => {
+  localStorage.setItem(MSG_KEY, msgText.value);
+  renderMsgList();
+});
+
+$$(".chip").forEach((chip) =>
+  chip.addEventListener("click", () => {
+    const tag = chip.dataset.insert;
+    const s = msgText.selectionStart ?? msgText.value.length;
+    const e = msgText.selectionEnd ?? s;
+    msgText.setRangeText(tag, s, e, "end");
+    msgText.focus();
+    msgText.dispatchEvent(new Event("input"));
+  })
+);
+
+$("#msgSearch").addEventListener("input", renderMsgList);
+$("#msgBeanFilter").addEventListener("change", renderMsgList);
+
+$("#msgSelectAll").addEventListener("click", () => {
+  visibleForMessages().forEach((c) => selected.add(c.id));
+  renderMsgList();
+});
+$("#msgSelectNone").addEventListener("click", () => {
+  selected.clear();
+  renderMsgList();
+});
+
+$("#msgList").addEventListener("change", (e) => {
+  if (!e.target.matches("[data-sel]")) return;
+  const id = e.target.closest(".msg-row").dataset.id;
+  e.target.checked ? selected.add(id) : selected.delete(id);
+  renderMsgList();
+});
+$("#msgList").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-send]");
+  if (btn) sendTo(btn.closest(".msg-row").dataset.id);
+});
+
+$("#msgSendNext").addEventListener("click", () => {
+  const sent = getSent();
+  const nextId = [...customers.keys()].find((id) => selected.has(id) && !sent.has(id));
+  if (nextId) sendTo(nextId);
+});
+
+$("#msgReset").addEventListener("click", () => {
+  localStorage.removeItem(SENT_KEY);
+  renderMsgList();
+  toast("تم تصفير حالة الإرسال");
 });
 
 /* ---------------------------------------------------------

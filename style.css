@@ -147,6 +147,47 @@ select {
 }
 select:focus { border-color: var(--copper); box-shadow: 0 0 0 3px rgba(184, 118, 58, .18); }
 
+/* ---------- Messages ---------- */
+.card-wide { max-width: 700px; margin-bottom: 14px; }
+textarea {
+  width: 100%; font: inherit; font-size: 1rem; color: var(--brown); line-height: 1.7;
+  padding: 12px 14px; background: var(--white); border: 1.5px solid var(--line); border-radius: 12px;
+  outline: none; resize: vertical; min-height: 120px;
+}
+textarea:focus { border-color: var(--copper); box-shadow: 0 0 0 3px rgba(184, 118, 58, .18); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.chip {
+  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; color: var(--copper-dark);
+  background: var(--cream-2); border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 12px;
+}
+.chip:hover { border-color: var(--copper); }
+.msg-preview {
+  background: #E8F6EC; border: 1.5px solid #bfe3ca; border-radius: 12px; padding: 10px 14px;
+}
+.msg-preview > div { white-space: pre-wrap; margin-top: 4px; }
+.msg-filters { display: grid; gap: 10px; margin-bottom: 10px; }
+@media (min-width: 640px) { .msg-filters { grid-template-columns: 1.4fr 1fr; } }
+.msg-select-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.msg-select-actions .muted { margin-inline-start: auto; font-weight: 700; }
+.msg-list { display: grid; gap: 8px; }
+.msg-row {
+  display: flex; align-items: center; gap: 10px; background: var(--cream);
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px;
+}
+.msg-row.is-selected { border-color: var(--copper); background: #FFF6E8; }
+.msg-check { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; cursor: pointer; padding: 4px 0; }
+.msg-check input { width: 22px; height: 22px; accent-color: var(--copper); flex: none; }
+.msg-who { min-width: 0; }
+.msg-who strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-who small { color: var(--brown-2); }
+.sent-tag { color: var(--ok); font-weight: 700; font-size: .85rem; white-space: nowrap; }
+.send-bar {
+  position: sticky; bottom: calc(var(--bottom-nav) + 8px + env(safe-area-inset-bottom));
+  display: flex; gap: 8px; max-width: 700px; margin: 0 auto; padding: 8px;
+  background: rgba(251, 243, 232, .94); backdrop-filter: blur(6px); border-radius: 16px;
+  border: 1.5px solid var(--line); box-shadow: var(--shadow);
+}
+
 /* ---------- Bean types ---------- */
 .inline-form { display: flex; gap: 8px; }
 .inline-form input { flex: 1; min-width: 0; }
