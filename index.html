@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3E2415">
+  <meta name="robots" content="noindex, nofollow">
+  <title>بن رواق | إدارة العملاء</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ شاشة التحميل ============ -->
+  <div id="splash" class="splash">
+    <img src="assets/logo.jpg" alt="بن رواق" class="splash-logo">
+  </div>
+
+  <!-- ============ شاشة الإعداد (تظهر إذا لم يتم ضبط Firebase) ============ -->
+  <section id="setupView" class="auth-view" hidden>
+    <div class="auth-card">
+      <h1>الإعداد مطلوب</h1>
+      <p class="muted">لم يتم ضبط إعدادات Firebase بعد. افتح الملف <code>js/firebase-config.js</code> وضع بيانات مشروعك فيه (الخطوات في ملف README.md).</p>
+    </div>
+  </section>
+
+  <!-- ============ شاشة الدخول ============ -->
+  <section id="loginView" class="auth-view" hidden>
+    <form id="loginForm" class="auth-card" novalidate>
+      <img src="assets/logo.jpg" alt="بن رواق" class="auth-logo">
+      <h1>تسجيل الدخول</h1>
+      <label class="field">
+        <span>اسم المستخدم</span>
+        <input type="text" id="loginUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" dir="ltr" required>
+      </label>
+      <label class="field">
+        <span>كلمة المرور</span>
+        <input type="password" id="loginPassword" autocomplete="current-password" dir="ltr" required>
+      </label>
+      <p id="loginError" class="form-error" role="alert" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">دخول</button>
+    </form>
+  </section>
+
+  <!-- ============ التطبيق ============ -->
+  <div id="appView" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo.jpg" alt="بن رواق" class="brand-logo">
+        <div>
+          <strong>بن رواق</strong>
+          <small>أصل المحوج</small>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn" title="تسجيل الخروج">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+        <span class="hide-sm">خروج</span>
+      </button>
+    </header>
+
+    <!-- تبويبات الشاشات الكبيرة -->
+    <nav class="tabs tabs-top" aria-label="التنقل">
+      <button class="tab active" data-tab="add" type="button">إضافة عميل</button>
+      <button class="tab" data-tab="list" type="button">العملاء المسجلون <span class="badge" data-count>0</span></button>
+      <button class="tab" data-tab="beans" type="button">أنواع البن <span class="badge" data-bean-count>0</span></button>
+    </nav>
+
+    <main class="container">
+
+      <!-- ===== تبويب الإضافة ===== -->
+      <section id="tab-add" class="panel active">
+        <form id="addForm" class="card" novalidate>
+          <h2>تسجيل عميل جديد</h2>
+
+          <label class="field">
+            <span>الاسم</span>
+            <input type="text" id="addName" autocomplete="off" placeholder="اسم العميل" maxlength="80" required>
+          </label>
+
+          <label class="field">
+            <span>رقم الجوال</span>
+            <input type="tel" id="addPhone" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx" dir="ltr" class="ltr-input" required>
+          </label>
+
+          <!-- تنبيه التكرار -->
+          <div id="dupAlert" class="dup-alert" role="alert" hidden>
+            <div class="dup-title">⚠️ هذا العميل مسجّل بالفعل</div>
+            <div class="dup-info">
+              <strong id="dupName"></strong>
+              <span dir="ltr" id="dupPhone"></span>
+              <span class="muted" id="dupBeans"></span>
+            </div>
+            <div class="dup-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="dupView">عرض العميل</button>
+              <button type="button" class="btn btn-primary btn-sm" id="dupEdit">تعديل العميل</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>البن المفضل</span>
+            <select id="addBeans" required>
+              <option value="">اختر البن المفضل</option>
+            </select>
+          </label>
+
+          <p id="addError" class="form-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-primary btn-block" id="addBtn">حفظ العميل</button>
+        </form>
+      </section>
+
+      <!-- ===== تبويب القائمة ===== -->
+      <section id="tab-list" class="panel">
+        <div class="list-tools">
+          <div class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="search" id="searchInput" placeholder="ابحث بالاسم أو الجوال أو نوع البن" autocomplete="off">
+          </div>
+          <button type="button" class="btn btn-outline" id="exportBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+            تصدير Excel
+          </button>
+        </div>
+
+        <p class="count-line muted" id="countLine"></p>
+
+        <div id="customerList" class="customer-list"></div>
+
+        <div id="emptyState" class="empty" hidden>
+          <img src="assets/logo.jpg" alt="">
+          <p id="emptyText">لا يوجد عملاء مسجلون بعد</p>
+        </div>
+      </section>
+
+      <!-- ===== تبويب أنواع البن ===== -->
+      <section id="tab-beans" class="panel">
+        <form id="beanForm" class="card" novalidate>
+          <h2>أنواع البن</h2>
+          <label class="field">
+            <span>إضافة نوع جديد</span>
+            <div class="inline-form">
+              <input type="text" id="beanName" autocomplete="off" placeholder="اسم نوع البن" maxlength="60">
+              <button type="submit" class="btn btn-primary" id="beanAddBtn">إضافة</button>
+            </div>
+          </label>
+          <p id="beanError" class="form-error" role="alert" hidden></p>
+          <div id="beanList" class="bean-list"></div>
+          <p class="muted bean-note">عند حذف نوع بن يبقى كما هو عند العملاء المسجّلين به سابقاً.</p>
+        </form>
+      </section>
+    </main>
+
+    <!-- تبويبات الموبايل (أسفل الشاشة) -->
+    <nav class="tabs tabs-bottom" aria-label="التنقل">
+      <button class="tab active" data-tab="add" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>إضافة عميل</span>
+      </button>
+      <button class="tab" data-tab="list" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span>العملاء <b class="badge" data-count>0</b></span>
+      </button>
+      <button class="tab" data-tab="beans" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5V8zM17 9h1.5a2.5 2.5 0 0 1 0 5H17M8 3v2M12 3v2"/></svg>
+        <span>أنواع البن</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ============ نافذة عرض / تعديل ============ -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <h3 id="modalTitle">بيانات العميل</h3>
+        <button type="button" class="icon-btn" data-close aria-label="إغلاق">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <!-- وضع العرض -->
+      <div id="viewMode">
+        <dl class="details">
+          <div><dt>الاسم</dt><dd id="vName"></dd></div>
+          <div>
+            <dt>رقم الجوال</dt>
+            <dd class="phone-row">
+              <span dir="ltr" id="vPhone"></span>
+              <button type="button" class="btn btn-outline btn-sm" id="vCopy">نسخ</button>
+            </dd>
+          </div>
+          <div><dt>البن المفضل</dt><dd id="vBeans"></dd></div>
+          <div><dt>تاريخ التسجيل</dt><dd id="vDate"></dd></div>
+        </dl>
+        <div class="quick-actions">
+          <a class="btn btn-outline" id="vCall" href="#">اتصال</a>
+          <a class="btn btn-whatsapp" id="vWa" href="#" target="_blank" rel="noopener">واتساب</a>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-primary" id="vEdit">تعديل</button>
+          <button type="button" class="btn btn-danger-outline" id="vDelete">حذف</button>
+        </div>
+      </div>
+
+      <!-- وضع التعديل -->
+      <form id="editMode" novalidate hidden>
+        <label class="field">
+          <span>الاسم</span>
+          <input type="text" id="editName" maxlength="80" required>
+        </label>
+        <label class="field">
+          <span>رقم الجوال</span>
+          <input type="tel" id="editPhone" inputmode="tel" dir="ltr" class="ltr-input" required>
+        </label>
+        <div id="editDup" class="dup-alert" hidden></div>
+        <label class="field">
+          <span>البن المفضل</span>
+          <select id="editBeans" required></select>
+        </label>
+        <p id="editError" class="form-error" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" id="editSave">حفظ التعديلات</button>
+          <button type="button" class="btn btn-outline" id="editCancel">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ نافذة تأكيد الحذف ============ -->
+  <div id="confirmBox" class="modal" hidden>
+    <div class="modal-backdrop" data-close-confirm></div>
+    <div class="modal-sheet modal-small" role="alertdialog" aria-modal="true">
+      <h3 id="confirmTitle">تأكيد الحذف</h3>
+      <p id="confirmText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="confirmYes">نعم، احذف</button>
+        <button type="button" class="btn btn-outline" data-close-confirm>إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
